@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WGS84 雙向轉換 TWD97</title>
+<style>
+:root{
+  --blue:#2563eb;--indigo:#4f46e5;--slate50:#f8fafc;--slate100:#f1f5f9;
+  --slate200:#e2e8f0;--slate500:#64748b;--slate700:#334155;--red:#dc2626;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;background:var(--slate50);color:#1e293b}
+.page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{width:100%;max-width:720px;background:#fff;border:1px solid var(--slate100);border-radius:18px;overflow:hidden;box-shadow:0 18px 45px rgba(15,23,42,.12)}
+.header{background:var(--blue);padding:26px;color:#fff;text-align:center}
+.pin{width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;margin:0 auto 12px;font-size:28px}
+.header h1{margin:0;font-size:27px;letter-spacing:.04em}
+.header p{margin:8px 0 0;color:#dbeafe;font-size:14px}
+.content{padding:28px}
+.section{margin-bottom:24px}
+.label{display:block;font-size:14px;font-weight:700;margin-bottom:10px;color:var(--slate700)}
+textarea{width:100%;height:145px;padding:15px;border:2px solid var(--slate200);border-radius:14px;background:var(--slate50);resize:none;font-size:17px;outline:none}
+textarea:focus{border-color:#3b82f6}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.hint{font-size:14px;color:var(--slate500)}
+.btn{border:0;border-radius:999px;padding:8px 13px;cursor:pointer;font-weight:600}
+.btn-soft{background:var(--slate100);color:var(--slate700)}
+.btn-soft:hover{background:var(--slate200)}
+.error{display:none;background:#fef2f2;color:var(--red);padding:14px;border-radius:12px;margin-bottom:18px}
+.parse{display:none;align-items:center;justify-content:space-between;background:var(--slate50);border:1px solid var(--slate100);border-radius:13px;padding:14px;font-size:14px}
+.muted{color:var(--slate500);margin-bottom:4px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700}
+.result{display:none;margin-top:15px;padding:20px;border-radius:15px;background:linear-gradient(135deg,#3b82f6,#4f46e5);color:#fff;box-shadow:0 10px 24px rgba(37,99,235,.25)}
+.result-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.result-title{font-size:13px;color:#dbeafe;font-weight:800;letter-spacing:.12em}
+.copyall{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:999px;padding:8px 12px;cursor:pointer}
+.coord-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.13);border-radius:12px;padding:13px;margin-top:10px}
+.coord-value{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:24px;font-weight:800;letter-spacing:.04em}
+.coord-value b{color:#bfdbfe;margin-right:8px}
+.row-actions{display:flex;gap:7px}
+.mini{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:9px;padding:8px 11px;cursor:pointer}
+.mini:hover{background:rgba(255,255,255,.28)}
+.mapbox{display:none;margin-top:16px;border:2px solid var(--slate100);border-radius:14px;overflow:hidden;background:#fff}
+.maphead{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--slate50);border-bottom:1px solid var(--slate100)}
+.maphead h3{font-size:14px;margin:0;color:var(--slate700)}
+.mapwrap{height:315px;background:var(--slate100)}
+iframe{width:100%;height:100%;border:0}
+.footer-note{font-size:12px;color:var(--slate500);line-height:1.6;margin-top:16px;text-align:center}
+@media(max-width:640px){
+  .content{padding:20px}
+  .coord-row{align-items:stretch;flex-direction:column}
+  .row-actions{width:100%}
+  .mini{flex:1}
+}
+</style>
+</head>
+<body>
+<div class="page"><main class="card">
+<header class="header">
+  <div class="pin">📍</div>
+  <h1>WGS84 雙向轉換 TWD97</h1>
+  <p>支援度分秒、十進位、地圖網址與 TWD97 E/N 格式自動判別</p>
+</header>
+
+<div class="content">
+<section class="section">
+  <label class="label" for="inputCoords">請貼上您的座標或地圖網址：</label>
+  <textarea id="inputCoords" placeholder="可貼上：
+1. 網址 (https://www.google.com/maps/...)
+2. 度分秒 (24°30'36.9&quot;N 120°41'03.1&quot;E)
+3. 十進位 (24.510254, 120.684181)
+4. TWD97 (E:217995.683 N:2711570.557)"></textarea>
+  <div class="actions">
+    <span class="hint">快速測試：</span>
+    <button class="btn btn-soft" data-example="dms">度分秒</button>
+    <button class="btn btn-soft" data-example="dd">十進位</button>
+    <button class="btn btn-soft" data-example="url">地圖網址</button>
+    <button class="btn btn-soft" data-example="twd97">TWD97 座標</button>
+  </div>
+</section>
+
+<div id="error" class="error">⚠ 無法辨識此座標格式，請確認是否為有效的 WGS84 或 TWD97 座標。</div>
+
+<div id="parse" class="parse">
+  <div>
+    <div id="format" class="muted"></div>
+    <div id="sourceValue" class="mono"></div>
+  </div>
+  <div style="color:#cbd5e1;font-size:24px">→</div>
+</div>
+
+<section id="result" class="result">
+  <div class="result-head">
+    <div id="resultTitle" class="result-title"></div>
+    <button id="copyAll" class="copyall">⧉ 複製全部</button>
+  </div>
+  <div class="coord-row">
+    <div class="coord-value"><b id="label1"></b><span id="value1"></span></div>
+    <div class="row-actions">
+      <button id="copy1Raw" class="mini">⧉ 數字</button>
+      <button id="copy1Prefix" class="mini">⧉ 含標示</button>
+    </div>
+  </div>
+  <div class="coord-row">
+    <div class="coord-value"><b id="label2"></b><span id="value2"></span></div>
+    <div class="row-actions">
+      <button id="copy2Raw" class="mini">⧉ 數字</button>
+      <button id="copy2Prefix" class="mini">⧉ 含標示</button>
+    </div>
+  </div>
+</section>
+
+<section id="mapbox" class="mapbox">
+  <div class="maphead"><h3>📍 地圖位置預覽</h3></div>
+  <div class="mapwrap">
+    <iframe id="mapFrame" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Google Map Location Preview"></iframe>
+  </div>
+</section>
+
+<div class="footer-note">座標轉換可完全離線使用；地圖預覽需要網路。Google Maps 短網址在離線環境無法自動展開。</div>
+</div>
+</main></div>
+
+<script>
+let parsed=null,inputType=null,twd=null,wgs=null;
+const $=id=>document.getElementById(id);
+const input=$('inputCoords');
+
+function convertToTWD97(lat,lon){
+  const a=6378137,b=6356752.3141403,long0=121*Math.PI/180,k0=.9999,dx=250000;
+  const e=Math.sqrt(1-Math.pow(b/a,2)),e2=e*e/(1-e*e),n=(a-b)/(a+b);
+  const latRad=lat*Math.PI/180,lonRad=lon*Math.PI/180,p=lonRad-long0;
+  const A=a*(1-n+1.25*(n*n-n*n*n)+(81/64)*(Math.pow(n,4)-Math.pow(n,5)));
+  const B=(3*a*n/2)*(1-n+(7/8)*(n*n-n*n*n)+(55/64)*(Math.pow(n,4)-Math.pow(n,5)));
+  const C=(15*a*n*n/16)*(1-n+.75*(n*n-n*n*n));
+  const D=(35*a*Math.pow(n,3)/48)*(1-n+(11/16)*(n*n-n*n*n));
+  const E=(315*a*Math.pow(n,4)/512)*(1-n);
+  const S=A*latRad-B*Math.sin(2*latRad)+C*Math.sin(4*latRad)-D*Math.sin(6*latRad)+E*Math.sin(8*latRad);
+  const nu=a/Math.sqrt(1-Math.pow(e*Math.sin(latRad),2));
+  const K1=S*k0,K2=k0*nu*Math.sin(2*latRad)/4;
+  const K3=(k0*nu*Math.sin(latRad)*Math.pow(Math.cos(latRad),3)/24)*(5-Math.pow(Math.tan(latRad),2)+9*e2*Math.pow(Math.cos(latRad),2)+4*e2*e2*Math.pow(Math.cos(latRad),4));
+  const y=K1+K2*p*p+K3*Math.pow(p,4);
+  const K4=k0*nu*Math.cos(latRad);
+  const K5=(k0*nu*Math.pow(Math.cos(latRad),3)/6)*(1-Math.pow(Math.tan(latRad),2)+e2*Math.pow(Math.cos(latRad),2));
+  const x=K4*p+K5*Math.pow(p,3)+dx;
+  return {e:x.toFixed(3),n:y.toFixed(3)};
+}
+
+function convertToWGS84(easting,northing){
+  const a=6378137,b=6356752.3141403,long0=121*Math.PI/180,k0=.9999,dx=250000;
+  const e=Math.sqrt(1-Math.pow(b/a,2)),e2=e*e/(1-e*e),x=easting-dx,y=northing;
+  const M=y/k0;
+  const mu=M/(a*(1-e*e/4-3*Math.pow(e,4)/64-5*Math.pow(e,6)/256));
+  const e1=(1-Math.sqrt(1-e*e))/(1+Math.sqrt(1-e*e));
+  const J1=3*e1/2-27*Math.pow(e1,3)/32;
+  const J2=21*e1*e1/16-55*Math.pow(e1,4)/32;
+  const J3=151*Math.pow(e1,3)/96;
+  const J4=1097*Math.pow(e1,4)/512;
+  const fp=mu+J1*Math.sin(2*mu)+J2*Math.sin(4*mu)+J3*Math.sin(6*mu)+J4*Math.sin(8*mu);
+  const C1=e2*Math.pow(Math.cos(fp),2),T1=Math.pow(Math.tan(fp),2);
+  const R1=a*(1-e*e)/Math.pow(1-e*e*Math.pow(Math.sin(fp),2),1.5);
+  const N1=a/Math.sqrt(1-e*e*Math.pow(Math.sin(fp),2));
+  const D=x/(N1*k0);
+  const Q1=N1*Math.tan(fp)/R1;
+  const Q2=D*D/2;
+  const Q3=(5+3*T1+10*C1-4*C1*C1-9*e2)*Math.pow(D,4)/24;
+  const Q4=(61+90*T1+298*C1+45*T1*T1-3*C1*C1-252*e2)*Math.pow(D,6)/720;
+  const latRad=fp-Q1*(Q2-Q3+Q4);
+  const Q5=D;
+  const Q6=(1+2*T1+C1)*Math.pow(D,3)/6;
+  const Q7=(5-2*C1+28*T1-3*C1*C1+8*e2+24*T1*T1)*Math.pow(D,5)/120;
+  const lonRad=long0+(Q5-Q6+Q7)/Math.cos(fp);
+  return {lat:latRad*180/Math.PI,lon:lonRad*180/Math.PI};
+}
+
+function parseCoordinates(val){
+  if(!val)return null;
+  let s=val.trim();
+
+  if(s.includes('google.com/maps')||s.includes('google.com.tw/maps')||s.includes('goo.gl')){
+    let m=s.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+    if(m)return{type:'WGS84',lat:+m[1],lon:+m[2],format:'Google Maps（精確位置）'};
+    m=s.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if(m)return{type:'WGS84',lat:+m[1],lon:+m[2],format:'Google Maps（地圖中心）'};
+    m=s.match(/[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if(m)return{type:'WGS84',lat:+m[1],lon:+m[2],format:'Google Maps（搜尋座標）'};
+  }
+
+  s=s.replace(/[。]/g,"°").replace(/[′’‘`]/g,"'").replace(/[””“″]/g,'"');
+
+  let m=s.match(/E[:\s]*(\d+(?:\.\d+)?)[,\s|]+N[:\s]*(\d+(?:\.\d+)?)/i);
+  if(m)return{type:'TWD97',e:+m[1],n:+m[2],format:'TWD97（E, N）'};
+
+  m=s.match(/N[:\s]*(\d+(?:\.\d+)?)[,\s|]+E[:\s]*(\d+(?:\.\d+)?)/i);
+  if(m)return{type:'TWD97',e:+m[2],n:+m[1],format:'TWD97（N, E）'};
+
+  m=s.match(/(\d{6}(?:\.\d+)?)\s*[,]?\s*(\d{7}(?:\.\d+)?)/);
+  if(m){
+    const v1=+m[1],v2=+m[2];
+    if(v1>100000&&v1<400000&&v2>2000000&&v2<3000000){
+      return{type:'TWD97',e:v1,n:v2,format:'TWD97（純數字）'};
+    }
+  }
+
+  m=s.match(/(?:(\d+)°\s*(\d+)'\s*([\d.]+)"\s*([NSns]))[\s,]*(?:(\d+)°\s*(\d+)'\s*([\d.]+)"\s*([EWew]))/);
+  if(m){
+    let lat=+m[1]+m[2]/60+m[3]/3600;
+    let lon=+m[5]+m[6]/60+m[7]/3600;
+    if(m[4].toUpperCase()==='S')lat=-lat;
+    if(m[8].toUpperCase()==='W')lon=-lon;
+    return{type:'WGS84',lat,lon,format:'度分秒（DMS）'};
+  }
+
+  m=s.match(/(-?\d{1,3}(?:\.\d+)?)\s*[,\s]+\s*(-?\d{1,3}(?:\.\d+)?)/);
+  if(m){
+    let v1=+m[1],v2=+m[2];
+    if(v1>110&&v2<90)return{type:'WGS84',lat:v2,lon:v1,format:'十進位（DD）'};
+    return{type:'WGS84',lat:v1,lon:v2,format:'十進位（DD）'};
+  }
+  return null;
+}
+
+function copyText(text,btn){
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.position='fixed';
+  ta.style.left='-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try{
+    document.execCommand('copy');
+    const old=btn.textContent;
+    btn.textContent='✓ 已複製';
+    setTimeout(()=>btn.textContent=old,1500);
+  }catch(e){}
+  ta.remove();
+}
+
+function update(){
+  parsed=parseCoordinates(input.value);
+
+  if(!input.value){
+    $('error').style.display='none';
+    $('parse').style.display='none';
+    $('result').style.display='none';
+    $('mapbox').style.display='none';
+    return;
+  }
+
+  if(!parsed){
+    $('error').style.display=input.value.length>5?'block':'none';
+    $('parse').style.display='none';
+    $('result').style.display='none';
+    $('mapbox').style.display='none';
+    return;
+  }
+
+  inputType=parsed.type;
+  $('error').style.display='none';
+
+  if(inputType==='WGS84'){
+    wgs={lat:parsed.lat,lon:parsed.lon};
+    twd=convertToTWD97(wgs.lat,wgs.lon);
+  }else{
+    twd={e:parsed.e.toFixed(3),n:parsed.n.toFixed(3)};
+    wgs=convertToWGS84(parsed.e,parsed.n);
+  }
+
+  $('format').textContent='辨識成功（'+parsed.format+'）';
+  $('sourceValue').textContent=inputType==='WGS84'
+    ?`Lat: ${wgs.lat.toFixed(6)}, Lon: ${wgs.lon.toFixed(6)}`
+    :`E: ${twd.e}, N: ${twd.n}`;
+
+  if(inputType==='WGS84'){
+    $('resultTitle').textContent='TWD97 轉換結果';
+    $('label1').textContent='E:';
+    $('value1').textContent=twd.e;
+    $('label2').textContent='N:';
+    $('value2').textContent=twd.n;
+  }else{
+    $('resultTitle').textContent='WGS84 轉換結果';
+    $('label1').textContent='Lat:';
+    $('value1').textContent=wgs.lat.toFixed(6);
+    $('label2').textContent='Lon:';
+    $('value2').textContent=wgs.lon.toFixed(6);
+  }
+
+  $('parse').style.display='flex';
+  $('result').style.display='block';
+  $('mapbox').style.display='block';
+  $('mapFrame').src=`https://maps.google.com/maps?q=${wgs.lat},${wgs.lon}&hl=zh-TW&z=16&output=embed`;
+}
+
+input.addEventListener('input',update);
+
+document.querySelectorAll('[data-example]').forEach(b=>b.onclick=()=>{
+  const t=b.dataset.example;
+  input.value=t==='dms'
+    ?`24°30'36.9"N 120°41'03.1"E`
+    :t==='dd'
+    ?`24.510254, 120.684181`
+    :t==='twd97'
+    ?`E: 217995.683 N: 2711570.557`
+    :`https://www.google.com/maps/place/24%C2%B030'36.9%22N+120%C2%B041'03.1%22E/@24.5102537,120.6816064,899m/data=!3m2!1e3!4b1!4m4!3m3!8m2!3d24.5102537!4d120.6841813`;
+  update();
+});
+
+$('copyAll').onclick=()=>copyText(
+  inputType==='WGS84'
+    ?`E: ${twd.e}\nN: ${twd.n}`
+    :`Lat: ${wgs.lat.toFixed(6)}\nLon: ${wgs.lon.toFixed(6)}`,
+  $('copyAll')
+);
+$('copy1Raw').onclick=()=>copyText(inputType==='WGS84'?twd.e:wgs.lat.toFixed(6),$('copy1Raw'));
+$('copy1Prefix').onclick=()=>copyText(inputType==='WGS84'?`E: ${twd.e}`:`Lat: ${wgs.lat.toFixed(6)}`,$('copy1Prefix'));
+$('copy2Raw').onclick=()=>copyText(inputType==='WGS84'?twd.n:wgs.lon.toFixed(6),$('copy2Raw'));
+$('copy2Prefix').onclick=()=>copyText(inputType==='WGS84'?`N: ${twd.n}`:`Lon: ${wgs.lon.toFixed(6)}`,$('copy2Prefix'));
+</script>
+</body>
+</html>
