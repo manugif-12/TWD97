@@ -1,321 +1,434 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WGS84 雙向轉換 TWD97</title>
-<style>
-:root{
-  --blue:#2563eb;--indigo:#4f46e5;--slate50:#f8fafc;--slate100:#f1f5f9;
-  --slate200:#e2e8f0;--slate500:#64748b;--slate700:#334155;--red:#dc2626;
-}
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;background:var(--slate50);color:#1e293b}
-.page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
-.card{width:100%;max-width:720px;background:#fff;border:1px solid var(--slate100);border-radius:18px;overflow:hidden;box-shadow:0 18px 45px rgba(15,23,42,.12)}
-.header{background:var(--blue);padding:26px;color:#fff;text-align:center}
-.pin{width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;margin:0 auto 12px;font-size:28px}
-.header h1{margin:0;font-size:27px;letter-spacing:.04em}
-.header p{margin:8px 0 0;color:#dbeafe;font-size:14px}
-.content{padding:28px}
-.section{margin-bottom:24px}
-.label{display:block;font-size:14px;font-weight:700;margin-bottom:10px;color:var(--slate700)}
-textarea{width:100%;height:145px;padding:15px;border:2px solid var(--slate200);border-radius:14px;background:var(--slate50);resize:none;font-size:17px;outline:none}
-textarea:focus{border-color:#3b82f6}
-.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
-.hint{font-size:14px;color:var(--slate500)}
-.btn{border:0;border-radius:999px;padding:8px 13px;cursor:pointer;font-weight:600}
-.btn-soft{background:var(--slate100);color:var(--slate700)}
-.btn-soft:hover{background:var(--slate200)}
-.error{display:none;background:#fef2f2;color:var(--red);padding:14px;border-radius:12px;margin-bottom:18px}
-.parse{display:none;align-items:center;justify-content:space-between;background:var(--slate50);border:1px solid var(--slate100);border-radius:13px;padding:14px;font-size:14px}
-.muted{color:var(--slate500);margin-bottom:4px}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700}
-.result{display:none;margin-top:15px;padding:20px;border-radius:15px;background:linear-gradient(135deg,#3b82f6,#4f46e5);color:#fff;box-shadow:0 10px 24px rgba(37,99,235,.25)}
-.result-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.result-title{font-size:13px;color:#dbeafe;font-weight:800;letter-spacing:.12em}
-.copyall{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:999px;padding:8px 12px;cursor:pointer}
-.coord-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.13);border-radius:12px;padding:13px;margin-top:10px}
-.coord-value{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:24px;font-weight:800;letter-spacing:.04em}
-.coord-value b{color:#bfdbfe;margin-right:8px}
-.row-actions{display:flex;gap:7px}
-.mini{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:9px;padding:8px 11px;cursor:pointer}
-.mini:hover{background:rgba(255,255,255,.28)}
-.mapbox{display:none;margin-top:16px;border:2px solid var(--slate100);border-radius:14px;overflow:hidden;background:#fff}
-.maphead{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--slate50);border-bottom:1px solid var(--slate100)}
-.maphead h3{font-size:14px;margin:0;color:var(--slate700)}
-.mapwrap{height:315px;background:var(--slate100)}
-iframe{width:100%;height:100%;border:0}
-.footer-note{font-size:12px;color:var(--slate500);line-height:1.6;margin-top:16px;text-align:center}
-@media(max-width:640px){
-  .content{padding:20px}
-  .coord-row{align-items:stretch;flex-direction:column}
-  .row-actions{width:100%}
-  .mini{flex:1}
-}
-</style>
-</head>
-<body>
-<div class="page"><main class="card">
-<header class="header">
-  <div class="pin">📍</div>
-  <h1>WGS84 雙向轉換 TWD97</h1>
-  <p>支援度分秒、十進位、地圖網址與 TWD97 E/N 格式自動判別</p>
-</header>
-
-<div class="content">
-<section class="section">
-  <label class="label" for="inputCoords">請貼上您的座標或地圖網址：</label>
-  <textarea id="inputCoords" placeholder="可貼上：
-1. 網址 (https://www.google.com/maps/...)
-2. 度分秒 (24°30'36.9&quot;N 120°41'03.1&quot;E)
-3. 十進位 (24.510254, 120.684181)
-4. TWD97 (E:217995.683 N:2711570.557)"></textarea>
-  <div class="actions">
-    <span class="hint">快速測試：</span>
-    <button class="btn btn-soft" data-example="dms">度分秒</button>
-    <button class="btn btn-soft" data-example="dd">十進位</button>
-    <button class="btn btn-soft" data-example="url">地圖網址</button>
-    <button class="btn btn-soft" data-example="twd97">TWD97 座標</button>
-  </div>
-</section>
-
-<div id="error" class="error">⚠ 無法辨識此座標格式，請確認是否為有效的 WGS84 或 TWD97 座標。</div>
-
-<div id="parse" class="parse">
-  <div>
-    <div id="format" class="muted"></div>
-    <div id="sourceValue" class="mono"></div>
-  </div>
-  <div style="color:#cbd5e1;font-size:24px">→</div>
-</div>
-
-<section id="result" class="result">
-  <div class="result-head">
-    <div id="resultTitle" class="result-title"></div>
-    <button id="copyAll" class="copyall">⧉ 複製全部</button>
-  </div>
-  <div class="coord-row">
-    <div class="coord-value"><b id="label1"></b><span id="value1"></span></div>
-    <div class="row-actions">
-      <button id="copy1Raw" class="mini">⧉ 數字</button>
-      <button id="copy1Prefix" class="mini">⧉ 含標示</button>
-    </div>
-  </div>
-  <div class="coord-row">
-    <div class="coord-value"><b id="label2"></b><span id="value2"></span></div>
-    <div class="row-actions">
-      <button id="copy2Raw" class="mini">⧉ 數字</button>
-      <button id="copy2Prefix" class="mini">⧉ 含標示</button>
-    </div>
-  </div>
-</section>
-
-<section id="mapbox" class="mapbox">
-  <div class="maphead"><h3>📍 地圖位置預覽</h3></div>
-  <div class="mapwrap">
-    <iframe id="mapFrame" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade" title="Google Map Location Preview"></iframe>
-  </div>
-</section>
-
-<div class="footer-note">座標轉換可完全離線使用；地圖預覽需要網路。Google Maps 短網址在離線環境無法自動展開。</div>
-</div>
-</main></div>
-
-<script>
-let parsed=null,inputType=null,twd=null,wgs=null;
-const $=id=>document.getElementById(id);
-const input=$('inputCoords');
-
-function convertToTWD97(lat,lon){
-  const a=6378137,b=6356752.3141403,long0=121*Math.PI/180,k0=.9999,dx=250000;
-  const e=Math.sqrt(1-Math.pow(b/a,2)),e2=e*e/(1-e*e),n=(a-b)/(a+b);
-  const latRad=lat*Math.PI/180,lonRad=lon*Math.PI/180,p=lonRad-long0;
-  const A=a*(1-n+1.25*(n*n-n*n*n)+(81/64)*(Math.pow(n,4)-Math.pow(n,5)));
-  const B=(3*a*n/2)*(1-n+(7/8)*(n*n-n*n*n)+(55/64)*(Math.pow(n,4)-Math.pow(n,5)));
-  const C=(15*a*n*n/16)*(1-n+.75*(n*n-n*n*n));
-  const D=(35*a*Math.pow(n,3)/48)*(1-n+(11/16)*(n*n-n*n*n));
-  const E=(315*a*Math.pow(n,4)/512)*(1-n);
-  const S=A*latRad-B*Math.sin(2*latRad)+C*Math.sin(4*latRad)-D*Math.sin(6*latRad)+E*Math.sin(8*latRad);
-  const nu=a/Math.sqrt(1-Math.pow(e*Math.sin(latRad),2));
-  const K1=S*k0,K2=k0*nu*Math.sin(2*latRad)/4;
-  const K3=(k0*nu*Math.sin(latRad)*Math.pow(Math.cos(latRad),3)/24)*(5-Math.pow(Math.tan(latRad),2)+9*e2*Math.pow(Math.cos(latRad),2)+4*e2*e2*Math.pow(Math.cos(latRad),4));
-  const y=K1+K2*p*p+K3*Math.pow(p,4);
-  const K4=k0*nu*Math.cos(latRad);
-  const K5=(k0*nu*Math.pow(Math.cos(latRad),3)/6)*(1-Math.pow(Math.tan(latRad),2)+e2*Math.pow(Math.cos(latRad),2));
-  const x=K4*p+K5*Math.pow(p,3)+dx;
-  return {e:x.toFixed(3),n:y.toFixed(3)};
-}
-
-function convertToWGS84(easting,northing){
-  const a=6378137,b=6356752.3141403,long0=121*Math.PI/180,k0=.9999,dx=250000;
-  const e=Math.sqrt(1-Math.pow(b/a,2)),e2=e*e/(1-e*e),x=easting-dx,y=northing;
-  const M=y/k0;
-  const mu=M/(a*(1-e*e/4-3*Math.pow(e,4)/64-5*Math.pow(e,6)/256));
-  const e1=(1-Math.sqrt(1-e*e))/(1+Math.sqrt(1-e*e));
-  const J1=3*e1/2-27*Math.pow(e1,3)/32;
-  const J2=21*e1*e1/16-55*Math.pow(e1,4)/32;
-  const J3=151*Math.pow(e1,3)/96;
-  const J4=1097*Math.pow(e1,4)/512;
-  const fp=mu+J1*Math.sin(2*mu)+J2*Math.sin(4*mu)+J3*Math.sin(6*mu)+J4*Math.sin(8*mu);
-  const C1=e2*Math.pow(Math.cos(fp),2),T1=Math.pow(Math.tan(fp),2);
-  const R1=a*(1-e*e)/Math.pow(1-e*e*Math.pow(Math.sin(fp),2),1.5);
-  const N1=a/Math.sqrt(1-e*e*Math.pow(Math.sin(fp),2));
-  const D=x/(N1*k0);
-  const Q1=N1*Math.tan(fp)/R1;
-  const Q2=D*D/2;
-  const Q3=(5+3*T1+10*C1-4*C1*C1-9*e2)*Math.pow(D,4)/24;
-  const Q4=(61+90*T1+298*C1+45*T1*T1-3*C1*C1-252*e2)*Math.pow(D,6)/720;
-  const latRad=fp-Q1*(Q2-Q3+Q4);
-  const Q5=D;
-  const Q6=(1+2*T1+C1)*Math.pow(D,3)/6;
-  const Q7=(5-2*C1+28*T1-3*C1*C1+8*e2+24*T1*T1)*Math.pow(D,5)/120;
-  const lonRad=long0+(Q5-Q6+Q7)/Math.cos(fp);
-  return {lat:latRad*180/Math.PI,lon:lonRad*180/Math.PI};
-}
-
-function parseCoordinates(val){
-  if(!val)return null;
-  let s=val.trim();
-
-  if(s.includes('google.com/maps')||s.includes('google.com.tw/maps')||s.includes('goo.gl')){
-    let m=s.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
-    if(m)return{type:'WGS84',lat:+m[1],lon:+m[2],format:'Google Maps（精確位置）'};
-    m=s.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    if(m)return{type:'WGS84',lat:+m[1],lon:+m[2],format:'Google Maps（地圖中心）'};
-    m=s.match(/[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    if(m)return{type:'WGS84',lat:+m[1],lon:+m[2],format:'Google Maps（搜尋座標）'};
-  }
-
-  s=s.replace(/[。]/g,"°").replace(/[′’‘`]/g,"'").replace(/[””“″]/g,'"');
-
-  let m=s.match(/E[:\s]*(\d+(?:\.\d+)?)[,\s|]+N[:\s]*(\d+(?:\.\d+)?)/i);
-  if(m)return{type:'TWD97',e:+m[1],n:+m[2],format:'TWD97（E, N）'};
-
-  m=s.match(/N[:\s]*(\d+(?:\.\d+)?)[,\s|]+E[:\s]*(\d+(?:\.\d+)?)/i);
-  if(m)return{type:'TWD97',e:+m[2],n:+m[1],format:'TWD97（N, E）'};
-
-  m=s.match(/(\d{6}(?:\.\d+)?)\s*[,]?\s*(\d{7}(?:\.\d+)?)/);
-  if(m){
-    const v1=+m[1],v2=+m[2];
-    if(v1>100000&&v1<400000&&v2>2000000&&v2<3000000){
-      return{type:'TWD97',e:v1,n:v2,format:'TWD97（純數字）'};
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WGS84 雙向轉換 TWD97</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-  }
+    .animate-slide-up {
+      animation: slideUp 0.3s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-slate-800">
 
-  m=s.match(/(?:(\d+)°\s*(\d+)'\s*([\d.]+)"\s*([NSns]))[\s,]*(?:(\d+)°\s*(\d+)'\s*([\d.]+)"\s*([EWew]))/);
-  if(m){
-    let lat=+m[1]+m[2]/60+m[3]/3600;
-    let lon=+m[5]+m[6]/60+m[7]/3600;
-    if(m[4].toUpperCase()==='S')lat=-lat;
-    if(m[8].toUpperCase()==='W')lon=-lon;
-    return{type:'WGS84',lat,lon,format:'度分秒（DMS）'};
-  }
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden border border-slate-100">
+    
+    <!-- Header -->
+    <div class="bg-blue-600 p-6 text-white text-center">
+      <div class="flex justify-center mb-3">
+        <div class="bg-white/20 p-3 rounded-full">
+          <!-- MapPin Icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+      </div>
+      <h1 class="text-2xl font-bold tracking-wide">WGS84 雙向轉換 TWD97</h1>
+      <p class="text-blue-100 mt-2 text-sm">支援度分秒、十進位、地圖網址與 TWD97 (E/N) 格式自動判別</p>
+    </div>
 
-  m=s.match(/(-?\d{1,3}(?:\.\d+)?)\s*[,\s]+\s*(-?\d{1,3}(?:\.\d+)?)/);
-  if(m){
-    let v1=+m[1],v2=+m[2];
-    if(v1>110&&v2<90)return{type:'WGS84',lat:v2,lon:v1,format:'十進位（DD）'};
-    return{type:'WGS84',lat:v1,lon:v2,format:'十進位（DD）'};
-  }
-  return null;
-}
+    <!-- Content -->
+    <div class="p-6 md:p-8 space-y-6">
+      
+      <!-- Input Section -->
+      <div class="space-y-3">
+        <label class="block text-sm font-semibold text-slate-700">請貼上您的座標或地圖網址：</label>
+        <div class="relative">
+          <textarea
+            id="coordInput"
+            placeholder='可貼上：&#10;1. 網址 (https://www.google.com/maps/...)&#10;2. 度分秒 (24°30&#39;36.9"N 120°41&#39;03.1"E)&#10;3. 十進位 (24.510254, 120.684181)&#10;4. TWD97 (E:217995.683 N:2711570.557)'
+            class="w-full h-32 p-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:ring-0 resize-none transition-colors text-lg"
+          ></textarea>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="flex flex-wrap gap-2 pt-1">
+          <span class="text-sm text-slate-500 py-1">快速測試：</span>
+          <button onclick="insertExample('dms')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition">度分秒</button>
+          <button onclick="insertExample('dd')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition">十進位</button>
+          <button onclick="insertExample('url')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition">地圖網址</button>
+          <button onclick="insertExample('twd97')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition">TWD97 座標</button>
+        </div>
+      </div>
 
-function copyText(text,btn){
-  const ta=document.createElement('textarea');
-  ta.value=text;
-  ta.style.position='fixed';
-  ta.style.left='-9999px';
-  document.body.appendChild(ta);
-  ta.select();
-  try{
-    document.execCommand('copy');
-    const old=btn.textContent;
-    btn.textContent='✓ 已複製';
-    setTimeout(()=>btn.textContent=old,1500);
-  }catch(e){}
-  ta.remove();
-}
+      <!-- Feedback Section (Error) -->
+      <div id="errorBox" class="hidden flex items-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        <span id="errorText" class="text-sm font-medium">無法辨識此座標格式，請確認是否為有效的 WGS84 或 TWD97 座標。</span>
+      </div>
 
-function update(){
-  parsed=parseCoordinates(input.value);
+      <!-- Result Section (Dynamic Content) -->
+      <div id="resultBox" class="hidden space-y-4 animate-slide-up">
+        <!-- Rendered by JS -->
+      </div>
 
-  if(!input.value){
-    $('error').style.display='none';
-    $('parse').style.display='none';
-    $('result').style.display='none';
-    $('mapbox').style.display='none';
-    return;
-  }
+    </div>
+  </div>
 
-  if(!parsed){
-    $('error').style.display=input.value.length>5?'block':'none';
-    $('parse').style.display='none';
-    $('result').style.display='none';
-    $('mapbox').style.display='none';
-    return;
-  }
+  <script>
+    // --- SVG 圖示庫 ---
+    const ICONS = {
+      arrowRight: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`,
+      copy: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
+      check: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
+      mapPinSmall: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`
+    };
 
-  inputType=parsed.type;
-  $('error').style.display='none';
+    // --- 核心數學邏輯 ---
+    const convertToTWD97 = (lat, lon) => {
+      const a = 6378137.0;
+      const b = 6356752.3141403;
+      const long0 = 121 * Math.PI / 180;
+      const k0 = 0.9999;
+      const dx = 250000;
 
-  if(inputType==='WGS84'){
-    wgs={lat:parsed.lat,lon:parsed.lon};
-    twd=convertToTWD97(wgs.lat,wgs.lon);
-  }else{
-    twd={e:parsed.e.toFixed(3),n:parsed.n.toFixed(3)};
-    wgs=convertToWGS84(parsed.e,parsed.n);
-  }
+      const e = Math.sqrt(1 - Math.pow(b / a, 2));
+      const e2 = Math.pow(e, 2) / (1 - Math.pow(e, 2));
+      const n = (a - b) / (a + b);
 
-  $('format').textContent='辨識成功（'+parsed.format+'）';
-  $('sourceValue').textContent=inputType==='WGS84'
-    ?`Lat: ${wgs.lat.toFixed(6)}, Lon: ${wgs.lon.toFixed(6)}`
-    :`E: ${twd.e}, N: ${twd.n}`;
+      const latRad = lat * Math.PI / 180;
+      const lonRad = lon * Math.PI / 180;
+      const p = lonRad - long0;
 
-  if(inputType==='WGS84'){
-    $('resultTitle').textContent='TWD97 轉換結果';
-    $('label1').textContent='E:';
-    $('value1').textContent=twd.e;
-    $('label2').textContent='N:';
-    $('value2').textContent=twd.n;
-  }else{
-    $('resultTitle').textContent='WGS84 轉換結果';
-    $('label1').textContent='Lat:';
-    $('value1').textContent=wgs.lat.toFixed(6);
-    $('label2').textContent='Lon:';
-    $('value2').textContent=wgs.lon.toFixed(6);
-  }
+      const A = a * (1 - n + (5 / 4.0) * (Math.pow(n, 2) - Math.pow(n, 3)) + (81 / 64.0) * (Math.pow(n, 4) - Math.pow(n, 5)));
+      const B = (3 * a * n / 2.0) * (1 - n + (7 / 8.0) * (Math.pow(n, 2) - Math.pow(n, 3)) + (55 / 64.0) * (Math.pow(n, 4) - Math.pow(n, 5)));
+      const C = (15 * a * Math.pow(n, 2) / 16.0) * (1 - n + (3 / 4.0) * (Math.pow(n, 2) - Math.pow(n, 3)));
+      const D = (35 * a * Math.pow(n, 3) / 48.0) * (1 - n + (11 / 16.0) * (Math.pow(n, 2) - Math.pow(n, 3)));
+      const E = (315 * a * Math.pow(n, 4) / 512.0) * (1 - n);
 
-  $('parse').style.display='flex';
-  $('result').style.display='block';
-  $('mapbox').style.display='block';
-  $('mapFrame').src=`https://maps.google.com/maps?q=${wgs.lat},${wgs.lon}&hl=zh-TW&z=16&output=embed`;
-}
+      const S = A * latRad - B * Math.sin(2 * latRad) + C * Math.sin(4 * latRad) - D * Math.sin(6 * latRad) + E * Math.sin(8 * latRad);
 
-input.addEventListener('input',update);
+      const nu = a / Math.sqrt(1 - Math.pow(e * Math.sin(latRad), 2));
+      const K1 = S * k0;
+      const K2 = k0 * nu * Math.sin(2 * latRad) / 4.0;
+      const K3 = (k0 * nu * Math.sin(latRad) * Math.pow(Math.cos(latRad), 3) / 24.0) * (5 - Math.pow(Math.tan(latRad), 2) + 9 * e2 * Math.pow(Math.cos(latRad), 2) + 4 * Math.pow(e2, 2) * Math.pow(Math.cos(latRad), 4));
+      const y = K1 + K2 * Math.pow(p, 2) + K3 * Math.pow(p, 4);
 
-document.querySelectorAll('[data-example]').forEach(b=>b.onclick=()=>{
-  const t=b.dataset.example;
-  input.value=t==='dms'
-    ?`24°30'36.9"N 120°41'03.1"E`
-    :t==='dd'
-    ?`24.510254, 120.684181`
-    :t==='twd97'
-    ?`E: 217995.683 N: 2711570.557`
-    :`https://www.google.com/maps/place/24%C2%B030'36.9%22N+120%C2%B041'03.1%22E/@24.5102537,120.6816064,899m/data=!3m2!1e3!4b1!4m4!3m3!8m2!3d24.5102537!4d120.6841813`;
-  update();
-});
+      const K4 = k0 * nu * Math.cos(latRad);
+      const K5 = (k0 * nu * Math.pow(Math.cos(latRad), 3) / 6.0) * (1 - Math.pow(Math.tan(latRad), 2) + e2 * Math.pow(Math.cos(latRad), 2));
+      const x = K4 * p + K5 * Math.pow(p, 3) + dx;
 
-$('copyAll').onclick=()=>copyText(
-  inputType==='WGS84'
-    ?`E: ${twd.e}\nN: ${twd.n}`
-    :`Lat: ${wgs.lat.toFixed(6)}\nLon: ${wgs.lon.toFixed(6)}`,
-  $('copyAll')
-);
-$('copy1Raw').onclick=()=>copyText(inputType==='WGS84'?twd.e:wgs.lat.toFixed(6),$('copy1Raw'));
-$('copy1Prefix').onclick=()=>copyText(inputType==='WGS84'?`E: ${twd.e}`:`Lat: ${wgs.lat.toFixed(6)}`,$('copy1Prefix'));
-$('copy2Raw').onclick=()=>copyText(inputType==='WGS84'?twd.n:wgs.lon.toFixed(6),$('copy2Raw'));
-$('copy2Prefix').onclick=()=>copyText(inputType==='WGS84'?`N: ${twd.n}`:`Lon: ${wgs.lon.toFixed(6)}`,$('copy2Prefix'));
-</script>
+      return { e: x.toFixed(3), n: y.toFixed(3) };
+    };
+
+    const convertToWGS84 = (easting, northing) => {
+      const a = 6378137.0;
+      const b = 6356752.3141403;
+      const long0 = 121 * Math.PI / 180;
+      const k0 = 0.9999;
+      const dx = 250000;
+      const dy = 0;
+
+      const e = Math.sqrt(1 - Math.pow(b / a, 2));
+      const e2 = Math.pow(e, 2) / (1 - Math.pow(e, 2));
+      const x = easting - dx;
+      const y = northing - dy;
+      const M = y / k0;
+
+      const mu = M / (a * (1 - Math.pow(e, 2) / 4 - 3 * Math.pow(e, 4) / 64 - 5 * Math.pow(e, 6) / 256));
+      const e1 = (1 - Math.sqrt(1 - Math.pow(e, 2))) / (1 + Math.sqrt(1 - Math.pow(e, 2)));
+
+      const J1 = (3 * e1 / 2 - 27 * Math.pow(e1, 3) / 32);
+      const J2 = (21 * Math.pow(e1, 2) / 16 - 55 * Math.pow(e1, 4) / 32);
+      const J3 = (151 * Math.pow(e1, 3) / 96);
+      const J4 = (1097 * Math.pow(e1, 4) / 512);
+
+      const fp = mu + J1 * Math.sin(2 * mu) + J2 * Math.sin(4 * mu) + J3 * Math.sin(6 * mu) + J4 * Math.sin(8 * mu);
+
+      const C1 = e2 * Math.pow(Math.cos(fp), 2);
+      const T1 = Math.pow(Math.tan(fp), 2);
+      const R1 = a * (1 - Math.pow(e, 2)) / Math.pow(1 - Math.pow(e, 2) * Math.pow(Math.sin(fp), 2), 1.5);
+      const N1 = a / Math.sqrt(1 - Math.pow(e, 2) * Math.pow(Math.sin(fp), 2));
+      const D = x / (N1 * k0);
+
+      const Q1 = N1 * Math.tan(fp) / R1;
+      const Q2 = Math.pow(D, 2) / 2;
+      const Q3 = (5 + 3 * T1 + 10 * C1 - 4 * Math.pow(C1, 2) - 9 * e2) * Math.pow(D, 4) / 24;
+      const Q4 = (61 + 90 * T1 + 298 * C1 + 45 * Math.pow(T1, 2) - 3 * Math.pow(C1, 2) - 252 * e2) * Math.pow(D, 6) / 720;
+      const latRad = fp - Q1 * (Q2 - Q3 + Q4);
+
+      const Q5 = D;
+      const Q6 = (1 + 2 * T1 + C1) * Math.pow(D, 3) / 6;
+      const Q7 = (5 - 2 * C1 + 28 * T1 - 3 * Math.pow(C1, 2) + 8 * e2 + 24 * Math.pow(T1, 2)) * Math.pow(D, 5) / 120;
+      const lonRad = long0 + (Q5 - Q6 + Q7) / Math.cos(fp);
+
+      return { lat: latRad * 180 / Math.PI, lon: lonRad * 180 / Math.PI };
+    };
+
+    // --- 座標解析邏輯 ---
+    const parseCoordinates = (val) => {
+      if (!val) return null;
+      let s = val.trim();
+
+      if (s.includes('google.com/maps') || s.includes('google.com.tw/maps') || s.includes('goo.gl')) {
+        const pinMatch = s.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+        if (pinMatch) return { type: 'WGS84', lat: parseFloat(pinMatch[1]), lon: parseFloat(pinMatch[2]), format: 'Google Maps (精確位置)' };
+        const centerMatch = s.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+        if (centerMatch) return { type: 'WGS84', lat: parseFloat(centerMatch[1]), lon: parseFloat(centerMatch[2]), format: 'Google Maps (地圖中心)' };
+        const qMatch = s.match(/[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+        if (qMatch) return { type: 'WGS84', lat: parseFloat(qMatch[1]), lon: parseFloat(qMatch[2]), format: 'Google Maps (搜尋座標)' };
+      }
+
+      s = s.replace(/[。]/g, "°").replace(/[′’‘`]/g, "'").replace(/[””“″]/g, '"');
+
+      const twdRegexEN = /E[:\s]*(\d+(?:\.\d+)?)[,\s|]+N[:\s]*(\d+(?:\.\d+)?)/i;
+      const twdRegexNE = /N[:\s]*(\d+(?:\.\d+)?)[,\s|]+E[:\s]*(\d+(?:\.\d+)?)/i;
+      const twdRegexRaw = /(\d{6}(?:\.\d+)?)\s*[,]?\s*(\d{7}(?:\.\d+)?)/;
+
+      let mTwd = s.match(twdRegexEN);
+      if (mTwd) return { type: 'TWD97', e: parseFloat(mTwd[1]), n: parseFloat(mTwd[2]), format: 'TWD97 (E, N)' };
+
+      mTwd = s.match(twdRegexNE);
+      if (mTwd) return { type: 'TWD97', e: parseFloat(mTwd[2]), n: parseFloat(mTwd[1]), format: 'TWD97 (N, E)' };
+
+      mTwd = s.match(twdRegexRaw);
+      if (mTwd) {
+        let v1 = parseFloat(mTwd[1]), v2 = parseFloat(mTwd[2]);
+        if (v1 > 100000 && v1 < 400000 && v2 > 2000000 && v2 < 3000000) {
+          return { type: 'TWD97', e: v1, n: v2, format: 'TWD97 (純數字)' };
+        }
+      }
+
+      const dmsRegex = /(?:(\d+)°\s*(\d+)'\s*([\d.]+)"\s*([NSns]))[\s,]*(?:(\d+)°\s*(\d+)'\s*([\d.]+)"\s*([EWew]))/;
+      const m1 = s.match(dmsRegex);
+      if (m1) {
+        let lat = parseFloat(m1[1]) + parseFloat(m1[2]) / 60 + parseFloat(m1[3]) / 3600;
+        if (m1[4].toUpperCase() === 'S') lat = -lat;
+        let lon = parseFloat(m1[5]) + parseFloat(m1[6]) / 60 + parseFloat(m1[7]) / 3600;
+        if (m1[8].toUpperCase() === 'W') lon = -lon;
+        return { type: 'WGS84', lat, lon, format: '度分秒 (DMS)' };
+      }
+
+      const ddRegex = /(-?\d{1,3}(?:\.\d+)?)\s*[,\s]+\s*(-?\d{1,3}(?:\.\d+)?)/;
+      const m2 = s.match(ddRegex);
+      if (m2) {
+        let v1 = parseFloat(m2[1]), v2 = parseFloat(m2[2]);
+        if (v1 > 110 && v2 < 90) return { type: 'WGS84', lat: v2, lon: v1, format: '十進位 (DD)' };
+        return { type: 'WGS84', lat: v1, lon: v2, format: '十進位 (DD)' };
+      }
+      return null;
+    };
+
+    // --- DOM 操作與狀態管理 ---
+    const inputEl = document.getElementById('coordInput');
+    const errorBox = document.getElementById('errorBox');
+    const resultBox = document.getElementById('resultBox');
+
+    // 複製到剪貼簿功能
+    window.handleCopy = function(text, btnId, successText, normalText) {
+      if (!text) return;
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.top = "-9999px";
+      textArea.style.left = "-9999px";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        if (document.execCommand('copy')) {
+          const btn = document.getElementById(btnId);
+          if (btn) {
+            const originalHTML = btn.innerHTML;
+            const originalClass = btn.className;
+            
+            // 變更為成功樣式
+            btn.innerHTML = `${ICONS.check} ${successText}`;
+            if(btnClassIncludes(originalClass, 'bg-green-500')) return; // 避免連按
+            
+            let newClass = originalClass;
+            if(originalClass.includes('bg-white/10')) newClass = originalClass.replace('text-xs flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors backdrop-blur-sm', 'text-xs flex items-center gap-1.5 bg-green-500/20 text-green-300 hover:bg-green-500/30 px-3 py-1.5 rounded-full transition-colors backdrop-blur-sm'); // Copy All btn
+            else if(originalClass.includes('bg-blue-100')) newClass = originalClass.replace('bg-blue-100 hover:bg-blue-200 text-blue-700', 'bg-green-500 text-white'); // URL Copy btn
+            else newClass = originalClass.replace('bg-white/20 hover:bg-white/30', 'bg-green-500 shadow-lg shadow-green-500/30').replace('text-white', 'text-white'); // Normal btn
+            
+            btn.className = newClass;
+
+            setTimeout(() => {
+              btn.innerHTML = originalHTML;
+              btn.className = originalClass;
+            }, 2000);
+          }
+        }
+      } catch (err) { console.error('複製失敗', err); }
+      document.body.removeChild(textArea);
+    };
+
+    function btnClassIncludes(str, sub) { return str.indexOf(sub) !== -1; }
+
+    // 更新 UI 面板
+    function updateUI() {
+      const val = inputEl.value;
+      if (!val) {
+        errorBox.classList.add('hidden');
+        resultBox.classList.add('hidden');
+        return;
+      }
+
+      const parsed = parseCoordinates(val);
+      if (parsed) {
+        errorBox.classList.add('hidden');
+        
+        let twd97, wgs84;
+        let isWGS84Input = parsed.type === 'WGS84';
+
+        if (isWGS84Input) {
+          wgs84 = { lat: parsed.lat, lon: parsed.lon };
+          twd97 = convertToTWD97(parsed.lat, parsed.lon);
+        } else {
+          twd97 = { e: parsed.e.toFixed(3), n: parsed.n.toFixed(3) };
+          wgs84 = convertToWGS84(parsed.e, parsed.n);
+        }
+
+        const mapUrl = `https://www.google.com/maps?q=${wgs84.lat.toFixed(6)},${wgs84.lon.toFixed(6)}`;
+        
+        // 生成結果 HTML
+        const resultHTML = `
+          <!-- Parse Info -->
+          <div class="flex items-center justify-between text-sm p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div class="flex flex-col">
+              <span class="text-slate-500 mb-1">辨識成功 (${parsed.format})</span>
+              <span class="font-mono font-medium text-slate-700">
+                ${isWGS84Input ? `Lat: ${wgs84.lat.toFixed(6)}, Lon: ${wgs84.lon.toFixed(6)}` : `E: ${twd97.e}, N: ${twd97.n}`}
+              </span>
+            </div>
+            ${ICONS.arrowRight}
+          </div>
+
+          <!-- Result Card -->
+          <div class="relative p-6 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg overflow-hidden">
+            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+            
+            <div class="flex justify-between items-center mb-4 relative z-10">
+              <h3 class="text-blue-100 text-sm font-semibold tracking-wider uppercase">
+                ${isWGS84Input ? 'TWD97 轉換結果' : 'WGS84 轉換結果'}
+              </h3>
+              <button id="btnCopyAll" onclick="handleCopy('${isWGS84Input ? `E: ${twd97.e}\\nN: ${twd97.n}` : `Lat: ${wgs84.lat.toFixed(6)}\\nLon: ${wgs84.lon.toFixed(6)}`}', 'btnCopyAll', '已複製全部', '複製全部')" class="text-xs flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors backdrop-blur-sm">
+                ${ICONS.copy} 複製全部
+              </button>
+            </div>
+            
+            <div class="space-y-3 relative z-10">
+              ${isWGS84Input ? `
+                <!-- TWD97 Result -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between bg-white/10 p-3.5 rounded-xl border border-white/10 backdrop-blur-sm">
+                  <div class="flex items-center font-mono text-2xl font-bold tracking-tight mb-3 md:mb-0">
+                    <span class="text-blue-200 w-8 shrink-0">E:</span>
+                    <span class="tracking-widest">${twd97.e}</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button id="btnE1" onclick="handleCopy('${twd97.e}', 'btnE1', '數字', '數字')" class="flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors flex-1 md:flex-none bg-white/20 hover:bg-white/30 text-white">${ICONS.copy} 數字</button>
+                    <button id="btnE2" onclick="handleCopy('E: ${twd97.e}', 'btnE2', '含 E:', '含 E:')" class="flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors flex-1 md:flex-none bg-white/20 hover:bg-white/30 text-white">${ICONS.copy} 含 E:</button>
+                  </div>
+                </div>
+                <div class="flex flex-col md:flex-row md:items-center justify-between bg-white/10 p-3.5 rounded-xl border border-white/10 backdrop-blur-sm">
+                  <div class="flex items-center font-mono text-2xl font-bold tracking-tight mb-3 md:mb-0">
+                    <span class="text-blue-200 w-8 shrink-0">N:</span>
+                    <span class="tracking-widest">${twd97.n}</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button id="btnN1" onclick="handleCopy('${twd97.n}', 'btnN1', '數字', '數字')" class="flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors flex-1 md:flex-none bg-white/20 hover:bg-white/30 text-white">${ICONS.copy} 數字</button>
+                    <button id="btnN2" onclick="handleCopy('N: ${twd97.n}', 'btnN2', '含 N:', '含 N:')" class="flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors flex-1 md:flex-none bg-white/20 hover:bg-white/30 text-white">${ICONS.copy} 含 N:</button>
+                  </div>
+                </div>
+              ` : `
+                <!-- WGS84 Result -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between bg-white/10 p-3.5 rounded-xl border border-white/10 backdrop-blur-sm">
+                  <div class="flex items-center font-mono text-2xl font-bold tracking-tight mb-3 md:mb-0">
+                    <span class="text-blue-200 w-12 shrink-0">Lat:</span>
+                    <span class="tracking-widest">${wgs84.lat.toFixed(6)}</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button id="btnLat1" onclick="handleCopy('${wgs84.lat.toFixed(6)}', 'btnLat1', '數字', '數字')" class="flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors flex-1 md:flex-none bg-white/20 hover:bg-white/30 text-white">${ICONS.copy} 數字</button>
+                    <button id="btnLat2" onclick="handleCopy('Lat: ${wgs84.lat.toFixed(6)}', 'btnLat2', '含 Lat', '含 Lat')" class="flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors flex-1 md:flex-none bg-white/20 hover:bg-white/30 text-white">${ICONS.copy} 含 Lat</button>
+                  </div>
+                </div>
+                <div class="flex flex-col md:flex-row md:items-center justify-between bg-white/10 p-3.5 rounded-xl border border-white/10 backdrop-blur-sm">
+                  <div class="flex items-center font-mono text-2xl font-bold tracking-tight mb-3 md:mb-0">
+                    <span class="text-blue-200 w-12 shrink-0">Lon:</span>
+                    <span class="tracking-widest">${wgs84.lon.toFixed(6)}</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button id="btnLon1" onclick="handleCopy('${wgs84.lon.toFixed(6)}', 'btnLon1', '數字', '數字')" class="flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors flex-1 md:flex-none bg-white/20 hover:bg-white/30 text-white">${ICONS.copy} 數字</button>
+                    <button id="btnLon2" onclick="handleCopy('Lon: ${wgs84.lon.toFixed(6)}', 'btnLon2', '含 Lon', '含 Lon')" class="flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors flex-1 md:flex-none bg-white/20 hover:bg-white/30 text-white">${ICONS.copy} 含 Lon</button>
+                  </div>
+                </div>
+              `}
+            </div>
+          </div>
+
+          <!-- Map Preview -->
+          <div class="mt-4 rounded-xl overflow-hidden border-2 border-slate-100 shadow-sm bg-white">
+            <div class="bg-slate-50 px-4 py-3 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                ${ICONS.mapPinSmall}
+                <h4 class="text-sm font-semibold text-slate-700 shrink-0">地圖位置預覽</h4>
+              </div>
+              
+              <div class="flex items-center gap-2 w-full md:w-auto">
+                <input 
+                  type="text" 
+                  readonly 
+                  value="${mapUrl}"
+                  class="text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-md flex-1 md:w-64 text-slate-500 focus:outline-none focus:border-blue-300"
+                  onclick="this.select()"
+                />
+                <button 
+                  id="btnCopyUrl"
+                  onclick="handleCopy('${mapUrl}', 'btnCopyUrl', '已複製網址', '複製網址')"
+                  class="flex items-center justify-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors shrink-0 font-medium bg-blue-100 hover:bg-blue-200 text-blue-700"
+                >
+                  ${ICONS.copy} 複製網址
+                </button>
+              </div>
+            </div>
+
+            <div class="w-full h-64 md:h-80 relative bg-slate-100">
+              <iframe
+                width="100%"
+                height="100%"
+                style="border: 0;"
+                loading="lazy"
+                allowfullscreen
+                referrerpolicy="no-referrer-when-downgrade"
+                src="https://maps.google.com/maps?q=${wgs84.lat},${wgs84.lon}&hl=zh-TW&z=16&output=embed"
+                title="Google Map Location Preview"
+                class="absolute inset-0"
+              ></iframe>
+            </div>
+          </div>
+        `;
+        
+        resultBox.innerHTML = resultHTML;
+        resultBox.classList.remove('hidden');
+
+      } else {
+        if(val.length > 5) {
+          errorBox.classList.remove('hidden');
+        } else {
+          errorBox.classList.add('hidden');
+        }
+        resultBox.classList.add('hidden');
+      }
+    }
+
+    // 綁定輸入事件
+    inputEl.addEventListener('input', updateUI);
+
+    // 快速測試按鈕
+    window.insertExample = function(type) {
+      if (type === 'dms') inputEl.value = `24°30'36.9"N 120°41'03.1"E`;
+      if (type === 'dd') inputEl.value = `24.510254, 120.684181`;
+      if (type === 'url') inputEl.value = `https://www.google.com/maps/place/24%C2%B030'36.9%22N+120%C2%B041'03.1%22E/@24.5102537,120.6816064,899m/data=!3m2!1e3!4b1!4m4!3m3!8m2!3d24.5102537!4d120.6841813`;
+      if (type === 'twd97') inputEl.value = `E: 217995.683 N: 2711570.557`;
+      updateUI();
+    };
+
+  </script>
 </body>
 </html>
